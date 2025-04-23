@@ -1,74 +1,188 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
+import { useState, useEffect } from 'react';
+import { StyleSheet, TextInput, TouchableOpacity, Alert, View } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/ThemedText';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { TaskCard } from '@/components/TaskCard/TaskCard';
+import { CustomTimeModal } from '@/components/CustomTimeModal/CustomTimeModal';
+import { Task } from '@/types/Task';
 
-export default function HomeScreen() {
+export default function TodoScreen() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [newTask, setNewTask] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [customMinutes, setCustomMinutes] = useState('');
+
+  // Update timer every second for active tasks
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTasks(currentTasks => 
+        currentTasks.map(task => ({
+          ...task,
+          timeSpent: task.isTracking ? task.timeSpent + 1 : task.timeSpent
+        }))
+      );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const addTask = () => {
+    if (newTask.trim() === '') {
+      Alert.alert('Error', 'Please enter a task');
+      return;
+    }
+    
+    const task: Task = {
+      id: Date.now().toString(),
+      title: newTask,
+      priority: 'medium',
+      completed: false,
+      timeSpent: 0,
+      isTracking: false,
+      wastedTime: 0
+    };
+    
+    setTasks([...tasks, task]);
+    setNewTask('');
+  };
+
+  const toggleTask = (id: string) => {
+    setTasks(tasks.map(task => 
+      task.id === id ? { ...task, completed: !task.completed } : task
+    ));
+  };
+
+  const toggleTimer = (id: string) => {
+    setTasks(tasks.map(task => 
+      task.id === id ? { ...task, isTracking: !task.isTracking } : task
+    ));
+  };
+
+  const addWastedTime = (id: string, minutes: number) => {
+    setTasks(tasks.map(task => 
+      task.id === id ? { ...task, wastedTime: task.wastedTime + (minutes * 60) } : task
+    ));
+  };
+
+  const deleteTask = (id: string) => {
+    setTasks(tasks.filter(task => task.id !== id));
+  };
+
+  const setPriority = (id: string, priority: Task['priority']) => {
+    setTasks(tasks.map(task => 
+      task.id === id ? { ...task, priority } : task
+    ));
+  };
+
+  const openTimeModal = (id: string) => {
+    setSelectedTaskId(id);
+    setModalVisible(true);
+    setCustomMinutes('');
+  };
+
+  const addCustomWastedTime = () => {
+    const minutes = parseInt(customMinutes);
+    if (isNaN(minutes) || minutes <= 0) {
+      Alert.alert('Error', 'Please enter a valid number of minutes');
+      return;
+    }
+
+    if (selectedTaskId) {
+      addWastedTime(selectedTaskId, minutes);
+      setModalVisible(false);
+      setCustomMinutes('');
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <ThemedView style={styles.container}>
+      <ThemedText type="title" style={styles.header}>Daily Tasks</ThemedText>
+      
+      <ThemedView style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          value={newTask}
+          onChangeText={setNewTask}
+          placeholder="Add a new task..."
+          placeholderTextColor="#999"
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
+       <TouchableOpacity onPress={addTask} style={styles.addButton}>
+  <IconSymbol name="plus.circle.fill" size={32} color="white" />
+  <ThemedText style={styles.addButtonText}>+</ThemedText>
+</TouchableOpacity>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+
+      {tasks.map((task) => (
+        <TaskCard
+          key={task.id}
+          task={task}
+          onToggleTask={toggleTask}
+          onToggleTimer={toggleTimer}
+          onAddWastedTime={addWastedTime}
+          onOpenTimeModal={openTimeModal}
+          onSetPriority={setPriority}
+          onDeleteTask={deleteTask}
+        />
+      ))}
+
+      <CustomTimeModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onAddTime={addCustomWastedTime}
+        customMinutes={customMinutes}
+        onChangeMinutes={setCustomMinutes}
+      />
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  header: {
+    marginBottom: 20,
+    fontSize: 24,
+    textAlign: 'center',
+  },
+  inputContainer: {
     flexDirection: 'row',
+    marginBottom: 20,
+  },
+  input: {
+    flex: 1,
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginRight: 10,
+    fontSize: 16,
+  },
+  addButton: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#007AFF',
+    borderRadius: 25,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  addButtonText: {
+    color: 'white',
+    fontSize: 24,
     position: 'absolute',
+    opacity: 0.5,
+    marginBottom: 5,
   },
 });
