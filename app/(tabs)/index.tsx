@@ -4,6 +4,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { TaskCard } from '@/components/TaskCard/TaskCard';
+import { ScheduleModal } from '@/components/ScheduleModal/ScheduleModal';
 import { CustomTimeModal } from '@/components/CustomTimeModal/CustomTimeModal';
 import { Task } from '@/types/Task';
 
@@ -11,6 +12,7 @@ export default function TodoScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTask, setNewTask] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+ const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [customMinutes, setCustomMinutes] = useState('');
 
@@ -76,6 +78,21 @@ export default function TodoScreen() {
     ));
   };
 
+  const handleScheduleTask = (id: string) => {
+    setSelectedTaskId(id);
+    setScheduleModalVisible(true);
+  };
+
+  const handleSaveSchedule = (reminder: Date, repeat: 'daily' | 'weekly' | 'monthly' | 'none', repeatTime?: string) => {
+    if (selectedTaskId) {
+      setTasks(tasks.map(task =>
+        task.id === selectedTaskId
+          ? { ...task, reminder, repeat, repeatTime }
+          : task
+      ));
+      setScheduleModalVisible(false);
+    }
+  };
   const openTimeModal = (id: string) => {
     setSelectedTaskId(id);
     setModalVisible(true);
@@ -124,6 +141,7 @@ export default function TodoScreen() {
           onOpenTimeModal={openTimeModal}
           onSetPriority={setPriority}
           onDeleteTask={deleteTask}
+          onScheduleTask={handleScheduleTask}
         />
       ))}
 
@@ -133,6 +151,15 @@ export default function TodoScreen() {
         onAddTime={addCustomWastedTime}
         customMinutes={customMinutes}
         onChangeMinutes={setCustomMinutes}
+      />
+
+     <ScheduleModal
+        visible={scheduleModalVisible}
+        onClose={() => setScheduleModalVisible(false)}
+        onSave={handleSaveSchedule}
+        currentReminder={selectedTaskId ? tasks.find(t => t.id === selectedTaskId)?.reminder : undefined}
+        currentRepeat={selectedTaskId ? tasks.find(t => t.id === selectedTaskId)?.repeat : 'none'}
+        currentRepeatTime={selectedTaskId ? tasks.find(t => t.id === selectedTaskId)?.repeatTime : undefined}
       />
     </ThemedView>
   );

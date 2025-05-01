@@ -1,9 +1,12 @@
 export type Task = {
-  id: string;
-  title: string;
-  priority: 'high' | 'medium' | 'low';
-  completed: boolean;
-  timeSpent: number; // in seconds
-  isTracking: boolean;
-  wastedTime: number; // in seconds
-}; 
+    id: string;
+    title: string;
+    completed: boolean;
+    timeSpent: number;
+    isTracking: boolean;
+    priority: 'low' | 'medium' | 'high';
+    wastedTime: number;
+    reminder?: Date;  // Add these three fields
+    repeat?: 'daily' | 'weekly' | 'monthly' | 'none';
+    repeatTime?: string;
+  };
